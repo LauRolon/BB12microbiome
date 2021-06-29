@@ -1,0 +1,224 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1344\cocoasubrtf720
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 AndaleMono;\f2\fswiss\fcharset0 ArialMT;
+}
+{\colortbl;\red255\green255\blue255;\red47\green255\blue18;}
+\margl1440\margr1440\vieww26400\viewh11900\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0\fs24 \cf0 vFeburary 2015 - Analysis of DRI samples. Greengenes version 13_8_gg and qiime version 1.8.0\
+\
+#1 create barcode file:\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 cat Run_Information/STEVE-V4_S1_L001_R1_001.fastq | perl -ne '$h1=$_; $s=<>; $h2=<>; $q=<>; print $h1.substr($s,0,8)."\\n".$h2.substr($q,0,8)."\\n"' > barcode_001.txt
+\f0 \cf0 \cb1 \CocoaLigature1 \
+
+\f1 \cf2 \cb0 \CocoaLigature0 cat Run_Information/STEVE-V4_S1_L001_R2_001.fastq | perl -ne '$h1=$_; $s=<>; $h2=<>; $q=<>; print $h1.substr($s,0,8)."\\n".$h2.substr($q,0,8)."\\n"' > barcode_002.txt
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#2 validate mapping file\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 validate_mapping_file.py -m Mapping_DRI_022715.txt -o map_out
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#3 quality filter and demultiplex\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 split_libraries_fastq.py -i Run_Information/STEVE-V4_S1_L001_R1_001.fastq,Run_Information/STEVE-V4_S1_L001_R2_001.fastq -o split_library_both -b barcode_001.txt,barcode_002.txt -m Mapping_DRI_022715.txt,Mapping_DRI_022715.txt --barcode_type 8\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0 \cf0 \cb1 \CocoaLigature1 \
+#4 OTU picking\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 pick_open_reference_otus.py -i split_library_both/seqs.fna -o otu022515/otus -r /macqiime/greengenes/gg_13_8_otus/rep_set/97_otus.fasta -a -O 12
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#5 assign_taxonomy\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 assign_taxonomy.py -i otu022515/otus/rep_set.fna -t /macqiime/lib/python2.7/site-packages/qiime_default_reference-0.1.1-py2.7.egg/qiime_default_reference/gg_13_8_otus/taxonomy/97_otu_taxonomy.txt -r /macqiime/greengenes/gg_13_8_otus/rep_set/97_otus.fasta -o taxonomy/
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#6 add taxonomy to biom file\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 biom add_metadata -i otu022515/otus/otu_table_mc2.biom -o otu022515/otu_table_w_tax.biom --observation-metadata-fp taxonomy/rep_set_tax_assignments.txt --observation-header OTUID,taxonomy --sc-separated taxonomy
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#7 filter non-sample/low quality sample OTUs (Subject[20], SampleID[13TP2, 09TP2, NEGATIVE1, NEGATIVE2])\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 filter_samples_from_otu_table.py -i otu022515/otu_table_w_tax.biom -o otu022515/otu.biom -m Mapping_DRI_022715.txt -s 'Subject:*,!20'\
+filter_samples_from_otu_table.py -i otu022515/otu.biom -o otu022515/otu1.biom -m Mapping_DRI_022715.txt -s 'SampleID:*,!13TP2'\
+filter_samples_from_otu_table.py -i otu022515/otu1.biom -o otu022515/otu2.biom -m Mapping_DRI_022715.txt -s 'SampleID:*,!09TP2'\
+filter_samples_from_otu_table.py -i otu022515/otu2.biom -o otu022515/otu3.biom -m Mapping_DRI_022715.txt -s 'SampleID:*,!NEGATIVE1'\
+filter_samples_from_otu_table.py -i otu022515/otu3.biom -o otu022515/otu4.biom -m Mapping_DRI_022715.txt -s 'SampleID:*,!NEGATIVE2'\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f2 \cf0 \cb1 \
+#8 Convert biom OTU table to txt format\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 biom convert -i otu022515/otu4.biom -o otu022515/filtered_otu.txt --to-tsv --header-key taxonomy\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f2 \cf0 \cb1 \
+#9 filter non-sample sequences\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 filter_fasta.py -f otu022515/otus/pynast_aligned_seqs/rep_set_aligned.fasta -o otu022515/filtered_rep.fasta -s otu022515/filtered_otu.txt
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#10 make phylogenetic tree\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 make_phylogeny.py -i otu022515/filtered_rep.fasta
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#11 summarize OTUs (observations) \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 biom summarize-table -i otu022515/filtered_otu.biom -o otu022515/filtered_summary.txt
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 the total number of observations (OTUs) after OTU picking is 48308, which is a ridiculous number of OTUs, need to filter OTUs. Total number of reads is 2645763\
+\
+#12 filtering OTUs with fewer than 27 observations from the data (based on multiplying the total number of reads by 0.00001 (want otus to represent at least 0.001% of the total population) - for this set should be 27):\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 filter_otus_from_otu_table.py -i otu022515/filtered_otu.biom -o otu022515/otu_27.biom -n 27
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#13 checking results\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0  biom summarize-table -i otu022515/otu_27.biom -o otu022515/filtered_summary27.txt
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+filtering resulted in total observations (OTUs) of 3901\
+\
+#14 summarize taxa through plots\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 summarize_taxa_through_plots.py -i otu022515/otu_27.biom -o otu022515/taxonomy_summarized_by_Description -s -m Mapping_DRI_022715.txt -c Description
+\f0 \cf0 \cb1 \CocoaLigature1 \
+
+\f1 \cf2 \cb0 \CocoaLigature0 summarize_taxa_through_plots.py -i otu022515/otu_27.biom -o otu022515/taxonomy_summarized_by_Treatment -s -m Mapping_DRI_022715.txt -c Treatment\
+
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 # 15 Divide otu table into treatments\
+\
+# Keep samples where the value for \'91Sex\'92 in the mapping file is \'91F\'92\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 filter_samples_from_otu_table.py -i otu022515/otu_27.biom -o otu022515/otu_F.biom -m Mapping_DRI_022715.txt -s 'Sex:F'
+\f2 \cf0 \cb1 \
+\
+#Summarize OTU based on treatment\
+
+\f1 \cf2 \cb0 summarize_taxa_through_plots.py -i otu022515/otu_F.biom -o otu022515/F_taxa_summarized_by_Treatment -s -m Mapping_DRI_022715.txt -c Treatment
+\f2 \cf0 \cb1 \
+\
+
+\f0 \CocoaLigature1 # Keep samples where the value for \'91Sex\'92 in the mapping file is \'91M\'92
+\f2 \CocoaLigature0 \
+
+\f1 \cf2 \cb0 filter_samples_from_otu_table.py -i otu022515/otu_27.biom -o otu022515/otu_M.biom -m Mapping_DRI_022715.txt -s 'Sex:M'\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f2 \cf0 \cb1 #Summarize OTU based on treatment\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 summarize_taxa_through_plots.py -i otu022515/otu_M.biom -o otu022515/M_taxa_summarized_by_Treatment -s -m Mapping_DRI_022715.txt -c Treatment
+\f2 \cf0 \cb1 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+\cf0 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0 \cf0 #16 creating relative abundance taxa tables for 
+\b LEfSe analysis
+\b0 :\
+# Make otu table for treatment comparison within Female\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 summarize_taxa_through_plots.py -i otu022515/otu_F.biom -o otu022515/F_taxa_by_Description -s -m Mapping_DRI_022715.txt -c Description
+\f2 \cf0 \cb1 \
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+
+\f0 \cf0 \CocoaLigature1 # Make otu table for treatment comparison within Male\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 summarize_taxa_through_plots.py -i otu022515/otu_M.biom -o otu022515/M_taxa_by_Description -s -m Mapping_DRI_022715.txt -c Description
+\f2 \cf0 \cb1 \
+
+\f0 \CocoaLigature1 \
+#Make otu table for treatment comparison across all participants\
+
+\f1 \cf2 \cb0 \CocoaLigature0 summarize_taxa_through_plots.py -i otu022515/otu_27.biom -o otu022515/A_taxa_by_Description -s -m Mapping_DRI_022715.txt -c Description
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#17 alpha diversity to choose what the cutoff for evenness sampling should be for core_diversity analyses:\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 alpha_rarefaction.py -i otu022515/otu_27.biom -o otu022515/alpha_rarefaction -t otu022515/otus/rep_set.tre -m Mapping_DRI_022715.txt -a -O 12
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#18 beta and alpha diversity among other statistical analyses:\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 core_diversity_analyses.py -i otu022515/otu_27.biom -o otu022515/core_div_2000 -m Mapping_DRI_022715.txt -t otu022515/otus/rep_set.tre -a -O 12 -e 2000
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#19 run with jackknifed support\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 jackknifed_beta_diversity.py -i otu022515/otu_27.biom -o otu022515/jackknife_beta_div_2000 -m Mapping_DRI_022715.txt -t otu022515/otus/rep_set.tre -a -O 12 -e 2000
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0  \
+beta diversity \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 beta_diversity_through_plots.py -i otu022515/otu_27.biom -o otu022515/beta_10000 -t otu022515/otus/rep_set.tre -m Mapping_DRI_022715.txt -a -O 12 -e 10000
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0  \
+make 2D beta diversity plots from jackknifed beta diversity results\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 make_2d_plots.py -i otu022515/jackknife_beta_div_2000/unweighted_unifrac/pcoa/ -o otu022515/jackknife_beta_div_2000/2D_jackknife_plots -m Mapping_DRI_022715.txt
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#20 beta and alpha diversity within FEMALE subjects\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 core_diversity_analyses.py -i otu022515/otu_F.biom -o otu022515/F_core_div_2000 -m Mapping_DRI_022715.txt -t otu022515/otus/rep_set.tre -a -O 12 -e 2000 
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+#21 beta and alpha diversity within MALE subjects\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural
+
+\f1 \cf2 \cb0 \CocoaLigature0 core_diversity_analyses.py -i otu022515/otu_M.biom -o otu022515/M_core_div_2000 -m Mapping_DRI_022715.txt -t otu022515/otus/rep_set.tre -a -O 12 -e 2000
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural
+\cf0 \
+}
